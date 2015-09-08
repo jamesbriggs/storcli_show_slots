@@ -45,8 +45,11 @@ use Data::Dumper;
                    goto NEXT_ARRAY if /^---/;;
                    chomp;
                    s/^ +//;
-                   my ($EID, $State, $Slots, $PD, $PS, $Fans, $TSs, $Alms, $SIM, $Port, $ProdID, $VendorSpecific) = split;
-                   $arrays{$EID} =  [ $controller, $State, $Slots, $PD, $PS, $Fans, $TSs, $Alms, $SIM, $Port, $ProdID, $VendorSpecific ];
+                   my ($EID, $State, $Slots, $PD, $PS, $Fans, $TSs, $Alms, $SIM, $Port, $ProdID, $VendorSpecific) =
+                      split;
+                   $arrays{$EID} = [
+                       $controller, $State, $Slots, $PD, $PS, $Fans, $TSs, $Alms, $SIM, $Port, $ProdID, $VendorSpecific,
+                   ];
                  }
               }
           }
@@ -78,9 +81,12 @@ NEXT_ARRAY:
             goto NEXT if /^---/;
             chomp;
             s/^ +//;
-            my ($DG, $Arr, $Row, $EID, $Slot, $DID, $Type,  $State, $BT,     $Size, $PDC,  $PI, $SED, $DS3,  $FSpace) = split /[ :]+/;
+            my ($DG, $Arr, $Row, $EID, $Slot, $DID, $Type, $State, $BT, $Size, $PDC, $PI, $SED, $DS3, $FSpace) =
+               split /[ :]+/;
             if ($EID ne '-') {
-               $topologies{$EID}{$Slot} = [ $DG, $Arr, $Row, $DID, $Type,  $State, $BT,     $Size, $PDC,  $PI, $SED, $DS3,  $FSpace ];
+               $topologies{$EID}{$Slot} = [
+                  $DG, $Arr, $Row, $DID, $Type, $State, $BT, $Size, $PDC, $PI, $SED, $DS3,  $FSpace,
+               ];
             }
          }
       }
@@ -93,8 +99,8 @@ NEXT_ARRAY:
          while (<X>) {
             goto NEXT if /^---/;
             chomp;
-            my ($DG, $VD, $TYPE,  $State, $Access, $Consist, $Cache, $sCC,     $Size, $Name) = split /[ \/]+/;
-            $groups{$DG} = [ $VD, $TYPE,  $State, $Access, $Consist, $Cache, $sCC,     $Size, $Name ];
+            my ($DG, $VD, $TYPE,  $State, $Access, $Consist, $Cache, $sCC, $Size, $Name) = split /[ \/]+/;
+            $groups{$DG} = [ $VD, $TYPE,  $State, $Access, $Consist, $Cache, $sCC, $Size, $Name ];
             $vols{"$controller:$DG"} = [ $VD, $Name, $State, $Size ];
          }
       }
@@ -107,11 +113,10 @@ NEXT_ARRAY:
          while (<X>) {
             goto NEXT if /^---/;
             chomp;
-            my ($EID, $Slt, $DID, $State,  $DG,       $Size, $Intf, $Med, $SED, $PI, $SeSz, $Model, $Sp) = split /[ :]+/;
-            $disks{$EID}{$Slt} = [ $DID, $State,  $DG,       $Size, $Intf, $Med, $SED, $PI, $SeSz, $Model, $Sp ];
+            my ($EID, $Slt, $DID, $State, $DG, $Size, $Intf, $Med, $SED, $PI, $SeSz, $Model, $Sp) = split /[ :]+/;
+            $disks{$EID}{$Slt} = [ $DID, $State, $DG, $Size, $Intf, $Med, $SED, $PI, $SeSz, $Model, $Sp ];
          }
       }
-
 NEXT:
    }
 
@@ -167,7 +172,9 @@ sub render_ascii {
            is_bad($r_dg->{$a}[$n], $r_vols->{$r_arrays->{$a}[0].':'.$r_dg->{$a}->[$n]}[2], 'Dgrd'); 
        }
 
-       print sprintf("%d:%3d:%3s %-17s", $r_arrays->{$a}[0], $a, $r_arrays->{$a}[1], $r_arrays->{$a}[2] . ' ' . $r_arrays->{$a}[3]) . " " . join(' ', @out) . "\n";
+       print sprintf("%d:%3d:%3s %-17s",
+          $r_arrays->{$a}[0], $a, $r_arrays->{$a}[1], $r_arrays->{$a}[2] . ' ' . $r_arrays->{$a}[3]) .
+          " " . join(' ', @out) . "\n";
    }
 
    print "\nFor vdisk status, type: storcli /call/vall show\n";

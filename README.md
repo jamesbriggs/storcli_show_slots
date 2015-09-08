@@ -13,7 +13,8 @@ Display LSI storcli command output in a pictorial grid on your terminal.
 
 **Technical Details**
 
-- Perl5. Tested on a Dell 2950 with PERC6i and PERC6e controllers and several MD1000 disk arrays running CentOS5.
+- Written in Perl5.
+- Tested on a Dell 2950 with PERC6i and PERC6e controllers and several MD1000 disk arrays running CentOS5.
 
 `usage: storcli_show_slots`
 
@@ -26,7 +27,7 @@ Display LSI storcli command output in a pictorial grid on your terminal.
         
     For vdisk status, type: storcli /call/vall show
 
-**Also See**
+**See Also**
 
 My gocons project for invoking Dell IPMI commands.
 
