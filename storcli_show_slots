@@ -1,0 +1,194 @@
+#!/usr/bin/perl
+
+# Program: storcli_show_slots
+# Purpose: display storage slots status grid
+# Author: James Briggs, California
+# Date: 2015 09 07
+# Env: Perl5
+# Note: this program calls LSI storcli twice, which can cause IO blocking or driver faults. Test before using in production.
+# Usage: storcli_show_slots 
+#
+# storcli_show_slots version 0.1. Collecting data ...
+# 
+# 0: 32: OK BACKPLANE 86O02YR O/0 O/0 O/1 O/1 O/1 S/1
+# 1: 34: OK MD1000 GGBLMJ1    O/2 O/2 O/3 O/3 O/3 O/3 M/  M/  M/  M/  M/  M/  M/  M/  M/ 
+# 1: 50: OK MD1000            O/4 O/4 O/4 O/4 O/4 O/7 O/7 O/7 M/  O/7 O/5 O/5 O/5 O/5 O/5
+# 1: 81: OK MD1000 833Q12S    O/1 O/1 O/1 O/1 O/1 O/6 O/6 O/6 O/6 O/6 O/0 O/0 O/0 O/0 O/0
+# 
+# For vdisk status, type: storcli /call/vall show
+
+use strict;
+use diagnostics;
+
+use Data::Dumper;
+
+   my $cmd_storcli = 'storcli';
+   my $VERSION = '0.1';
+
+   print "storcli_show_slots version $VERSION. Collecting data ...\n\n";
+
+   my %arrays;
+
+   open X, "$cmd_storcli /call/eall show all|";
+
+   my $controller = 0;
+   while (<X>) {
+      if (/^Controller = (\d+)/) {
+         $controller = $1;
+      }
+      elsif (/^Enclosure /) {
+         while (<X>) {
+            chomp;
+             if (/^EID /) {
+                $_ = <X>;
+                while (<X>) {
+                   goto NEXT_ARRAY if /^---/;;
+                   chomp;
+                   s/^ +//;
+                   my ($EID, $State, $Slots, $PD, $PS, $Fans, $TSs, $Alms, $SIM, $Port, $ProdID, $VendorSpecific) = split;
+                   $arrays{$EID} =  [ $controller, $State, $Slots, $PD, $PS, $Fans, $TSs, $Alms, $SIM, $Port, $ProdID, $VendorSpecific ];
+                 }
+              }
+          }
+      }
+NEXT_ARRAY:
+   }
+
+   close X;
+
+   my %groups;
+   my %vols;
+   my %topologies;
+   my %disks;
+
+   open X, "$cmd_storcli /call show |";
+
+   $controller = 0;
+   while (<X>) {
+      if (/^Controller = (\d+)/) {
+         $controller = $1;
+      }
+      elsif (/^TOPOLOGY :/) {
+         $_ = <X>;
+         $_ = <X>;
+         $_ = <X>;
+         $_ = <X>;
+         $_ = <X>;
+         while (<X>) {
+            goto NEXT if /^---/;
+            chomp;
+            s/^ +//;
+            my ($DG, $Arr, $Row, $EID, $Slot, $DID, $Type,  $State, $BT,     $Size, $PDC,  $PI, $SED, $DS3,  $FSpace) = split /[ :]+/;
+            if ($EID ne '-') {
+               $topologies{$EID}{$Slot} = [ $DG, $Arr, $Row, $DID, $Type,  $State, $BT,     $Size, $PDC,  $PI, $SED, $DS3,  $FSpace ];
+            }
+         }
+      }
+      elsif (/^VD LIST :/) {
+         $_ = <X>;
+         $_ = <X>;
+         $_ = <X>;
+         $_ = <X>;
+         $_ = <X>;
+         while (<X>) {
+            goto NEXT if /^---/;
+            chomp;
+            my ($DG, $VD, $TYPE,  $State, $Access, $Consist, $Cache, $sCC,     $Size, $Name) = split /[ \/]+/;
+            $groups{$DG} = [ $VD, $TYPE,  $State, $Access, $Consist, $Cache, $sCC,     $Size, $Name ];
+            $vols{"$controller:$DG"} = [ $VD, $Name, $State, $Size ];
+         }
+      }
+      elsif (/^PD LIST :/) {
+         $_ = <X>;
+         $_ = <X>;
+         $_ = <X>;
+         $_ = <X>;
+         $_ = <X>;
+         while (<X>) {
+            goto NEXT if /^---/;
+            chomp;
+            my ($EID, $Slt, $DID, $State,  $DG,       $Size, $Intf, $Med, $SED, $PI, $SeSz, $Model, $Sp) = split /[ :]+/;
+            $disks{$EID}{$Slt} = [ $DID, $State,  $DG,       $Size, $Intf, $Med, $SED, $PI, $SeSz, $Model, $Sp ];
+         }
+      }
+
+NEXT:
+   }
+
+   close X;
+
+   my %out_disks;
+   my %out_dg;
+   my %out_arrays;
+
+   for my $a (keys %arrays) {
+       $out_arrays{$a} = [ $arrays{$a}[0], $arrays{$a}[1], $arrays{$a}[10], $arrays{$a}[11] ];
+       for my $s (0 .. $arrays{$a}->[2]-1) {
+           if (exists $disks{$a}{$s}) {
+              push @{$out_disks{$a}}, $disks{$a}{$s}->[1];
+              push @{$out_dg{$a}}, $disks{$a}{$s}->[2];
+           }
+           else {
+              push @{$out_disks{$a}}, 'M';
+              push @{$out_dg{$a}}, ' ';
+           }
+       }
+   }
+
+   if (0) {
+      print Dumper(\%arrays);
+      print Dumper(\%groups);
+      print Dumper(\%vols);
+      print Dumper(\%topologies);
+      print Dumper(\%out_dg);
+   }
+
+   render_ascii(\%vols, \%out_arrays, \%out_disks, \%out_dg);
+
+sub render_ascii {
+   my ($r_vols, $r_arrays, $r_disks, $r_dg) = @_;
+
+   my %pd_status_one_char = (
+      Onln    => 'O',
+      UGood   => 'G',
+      UBad    => mk_red('B'),
+      Failed  => mk_red('F'),
+      M       => mk_red('M'),
+      DHS     => 'S',
+      GHS     => 'H',
+      ''      => 'U',
+   );
+
+   for my $a (sort keys %{$r_disks}) {
+      my @out;
+      for my $n (0 .. (scalar @{$r_disks->{$a}})-1) { 
+         push @out, 
+           $pd_status_one_char{$r_disks->{$a}[$n]} . '/' . 
+           is_bad($r_dg->{$a}[$n], $r_vols->{$r_arrays->{$a}[0].':'.$r_dg->{$a}->[$n]}[2], 'Dgrd'); 
+       }
+
+       print sprintf("%d:%3d:%3s %-17s", $r_arrays->{$a}[0], $a, $r_arrays->{$a}[1], $r_arrays->{$a}[2] . ' ' . $r_arrays->{$a}[3]) . " " . join(' ', @out) . "\n";
+   }
+
+   print "\nFor vdisk status, type: storcli /call/vall show\n";
+}
+
+sub is_bad {
+   my ($s, $t1, $t2) = @_;
+
+   return ' ' if not defined $t1 or not defined $t2;
+
+   if ($t1 eq $t2) {
+      return mk_red($s);
+   }
+   else {
+      return $s;
+   }
+}
+
+sub mk_red {
+   my ($s) = @_;
+
+   return "\033[7;31m$s\033[0;30m";
+}
+
