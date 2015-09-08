@@ -31,3 +31,4 @@ Display LSI storcli command output in a pictorial grid on your terminal.
 
 My gocons project for invoking Dell IPMI commands.
 
+![storcli_show_slots screenshot](storcli_show_slots.png?raw=true "storcli_show_slots screenshot")

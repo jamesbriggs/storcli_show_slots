@@ -5,7 +5,8 @@
 # Author: James Briggs, California
 # Date: 2015 09 07
 # Env: Perl5
-# Note: this program calls LSI storcli twice, which can cause IO blocking or driver faults. Test before using in production.
+# Note: this program calls LSI storcli twice, which can cause IO blocking or driver faults. Test before using in
+#    production.
 # Usage: storcli_show_slots 
 #
 # storcli_show_slots version 0.1. Collecting data ...
@@ -48,7 +49,7 @@ use Data::Dumper;
                    my ($EID, $State, $Slots, $PD, $PS, $Fans, $TSs, $Alms, $SIM, $Port, $ProdID, $VendorSpecific) =
                       split;
                    $arrays{$EID} = [
-                       $controller, $State, $Slots, $PD, $PS, $Fans, $TSs, $Alms, $SIM, $Port, $ProdID, $VendorSpecific,
+                       $controller, $State, $Slots, $PD, $PS, $Fans, $TSs, $Alms, $SIM, $Port, $ProdID, $VendorSpecific
                    ];
                  }
               }
