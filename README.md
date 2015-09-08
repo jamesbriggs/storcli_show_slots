@@ -14,7 +14,9 @@ Display LSI storcli command output in a pictorial grid on your terminal.
 **Technical Details**
 
 - Written in Perl5.
-- Tested on a Dell 2950 with PERC6i and PERC6e controllers and several MD1000 disk arrays running CentOS5.
+- Tested on a Dell 2950 with PERC6i and PERC5e controllers and several MD1000 disk arrays running CentOS5.
+
+**Screenshot**
 
 `usage: storcli_show_slots`
 
